@@ -27,7 +27,7 @@ local last_update = 0
 local last_snapshot = 0
 local next_id = 1
 
-local DEFAULT_SPEED = 5
+local DEFAULT_SPEED = 1
 local SNAPSHOT_INTERVAL = 0.1
 
 local raycast_params = RaycastParams.new()

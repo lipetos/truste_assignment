@@ -22,6 +22,38 @@ local fx_by_id: { [number]: Instance } = {}
 local appearance_by_id: { [number]: { material: Enum.Material, color: Color3 } } = {}
 local duration_by_id: { [number]: number } = {}
 
+local function get_all_parts(target)
+  local parts = {}
+  if target:IsA("BasePart") then
+    table.insert(parts, target)
+  elseif target:IsA("Model") then
+    for _, d in target:GetDescendants() do
+      if d:IsA("BasePart") then
+        table.insert(parts, d)
+      end
+    end
+  end
+  return parts
+end
+
+local function pivot(target: Instance, cf: CFrame)
+  if target:IsA("Model") then
+    target:PivotTo(cf)
+  elseif target:IsA("BasePart") then
+    target.CFrame = cf
+  end
+end
+
+local function get_cf(target: Instance): CFrame
+  if target:IsA("Model") then
+    return target:GetPivot()
+  elseif target:IsA("BasePart") then
+    return target.CFrame
+  else
+    return CFrame.new()
+  end
+end
+
 local function emit(inst: Instance)
   for i,v in inst:GetDescendants() do
     if v:IsA("ParticleEmitter") then
@@ -119,6 +151,21 @@ end
 
 function ReplicationController.get_appearance(id: number)
   return appearance_by_id[id]
+end
+
+function ReplicationController.play_destroy_fx(inst: Instance)
+  if not inst or not inst.Parent then return end
+
+  local TweenService = game:GetService("TweenService")
+
+  local duration = 0.4
+  local parts = get_all_parts(inst)
+  for _, p in parts do
+    p.Anchored = true
+    TweenService:Create(p, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+      Transparency = 1,
+    }):Play()
+  end
 end
 
 return ReplicationController

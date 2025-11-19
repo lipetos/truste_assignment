@@ -176,7 +176,7 @@ local function cleanup_missing(currentIds: { [string]: boolean })
   for id, model in id_to_model do
     if not currentIds[id] then
       if model and model.Parent ~= nil then
-        model:Destroy()
+        replication_controller.play_destroy_fx(model)
       end
       id_to_model[id] = nil
       id_to_state[id] = nil
