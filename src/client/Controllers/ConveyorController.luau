@@ -5,20 +5,21 @@
 ]]
 
 --// imports
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Players = game:GetService("Players")
+local replicated_storage = game:GetService("ReplicatedStorage")
+local run_service = game:GetService("RunService")
+local players = game:GetService("Players")
 
-local Fusion = require(ReplicatedStorage.packages.Fusion)
+local Fusion = require(replicated_storage.packages.Fusion)
 local scope = Fusion.scoped(Fusion)
 
-local conveyor_net = require(ReplicatedStorage.shared.ConveyorNet)
-local gizmos = require(ReplicatedStorage.packages.gizmos)
+local conveyor_net = require(replicated_storage.shared.ConveyorNet)
+local gizmos = require(replicated_storage.packages.gizmos)
+local replication_controller = require(script.Parent.ReplicationController)
 
 --// assets
 local world_folder = workspace:WaitForChild("world")
 local spawned_bags_folder = world_folder:FindFirstChild("spawned_bags") or world_folder
-local assets_folder = ReplicatedStorage:WaitForChild("assets")
+local assets_folder = replicated_storage:WaitForChild("assets")
 local bag_template = assets_folder:WaitForChild("BagVisual")
 
 local conveyor_folder = workspace:WaitForChild("world"):WaitForChild("conveyor_belt")
@@ -129,19 +130,41 @@ local function count_bags()
   return n
 end
 
-local function ensure_model(id: string)
+local function attach_click_detector(inst: Instance, id)
+  local cd = Instance.new("ClickDetector")
+  cd.Parent = inst
+
+  cd.MouseClick:Connect(function()
+    local nid = id
+    print(string.format("[client] bag clicked id=%d", nid))
+    conveyor_net.BagClicked.send({ id = nid })
+  end)
+end
+
+local function ensure_model(id)
   local existing = id_to_model[id]
   if existing and existing.Parent ~= nil then
     return existing
   end
 
+  local numeric_id = tonumber(id)
+  local ap = replication_controller.get_appearance(numeric_id)
+
   local clone = bag_template:Clone()
-  clone.Name = id
+  clone.Name = tostring(id)
   clone.Anchored = true
   clone.CanCollide = false
-  clone.CanQuery = false
+  clone.CanQuery = true
   clone.CanTouch = false
+
+  if ap then
+    clone.Material = ap.material
+    clone.Color = ap.color
+  end
+
   clone.Parent = spawned_bags_folder
+
+  attach_click_detector(clone, id)
 
   id_to_model[id] = clone
   bagCount:set(count_bags())
@@ -182,7 +205,6 @@ local function apply_transform(model: Instance, pos: Vector3, dir: Vector3)
   end
 end
 
--- Returns half the visual height so the center sits correctly on the ground
 local function gethalf_height(inst: Instance): number
   if inst:IsA("BasePart") then
     return inst.Size.Y * 0.5
@@ -195,7 +217,7 @@ local function gethalf_height(inst: Instance): number
 end
 
 local function mountUI()
-  local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+  local playerGui = players.LocalPlayer:WaitForChild("PlayerGui")
   local gui = scope:New "ScreenGui" {
     Name = "ConveyorHUD",
     ResetOnSpawn = false,
@@ -297,7 +319,7 @@ function conveyor_controller.start()
     cleanup_missing(present)
   end)
 
-  RunService.RenderStepped:Connect(function()
+  run_service.RenderStepped:Connect(function()
     local now = os.clock()
     for id, model in id_to_model do
       local state = id_to_state[id]

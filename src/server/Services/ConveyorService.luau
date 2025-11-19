@@ -19,20 +19,29 @@ local server_bags_folder = world_folder:WaitForChild("server_bags")
 local spawn_bag_part = conveyor_model:WaitForChild("SpawnBagPart")
 local consume_bag_part = conveyor_model:WaitForChild("ConsumeBagPart")
 
+local replication_service = require(script.Parent.ReplicationService)
 --// vars
 local bags_runtime = {}
 local current_conveyor: any = nil
 local last_update = 0
 local last_snapshot = 0
-local next_id = 0
+local next_id = 1
 
+local DEFAULT_SPEED = 5
+local SNAPSHOT_INTERVAL = 0.1
+
+local raycast_params = RaycastParams.new()
+raycast_params.FilterType = Enum.RaycastFilterType.Exclude
+raycast_params.FilterDescendantsInstances = { server_bags_folder }
+
+--// local functions
 local function allocate_id(): number?
   for _ = 1, 256 do
     local candidate = next_id
     next_id += 1
 
     if next_id > 255 then
-      next_id = 0
+      next_id = 1
     end
 
     if not bags_runtime[candidate] then
@@ -41,14 +50,6 @@ local function allocate_id(): number?
   end
 end
 
-local DEFAULT_SPEED = 10
-local SNAPSHOT_INTERVAL = 0.1
-
-local raycast_params = RaycastParams.new()
-raycast_params.FilterType = Enum.RaycastFilterType.Exclude
-raycast_params.FilterDescendantsInstances = { server_bags_folder }
-
---// local functions
 local function sort_numeric_by_name(a: Instance, b: Instance): boolean
   local na = tonumber(a.Name) or 0
   local nb = tonumber(b.Name) or 0
@@ -167,10 +168,10 @@ local function sample_cframe_at_distance(path, distance: number): CFrame
   end
 
   for i = 1, #path.segments do
-    local prevCum = if i == 1 then 0 else path.cumulative[i - 1]
+    local prev_cum = if i == 1 then 0 else path.cumulative[i - 1]
     if distance <= path.cumulative[i] then
       local seg_len = path.segments[i]
-      local t = (distance - prevCum) / seg_len
+      local t = (distance - prev_cum) / seg_len
 
       local a = path.positions[i]
       local b = path.positions[i + 1]
@@ -201,6 +202,12 @@ function conveyor_service.start()
   end)
 end
 
+function conveyor_service.set_spawn_rate(rate: number)
+  if not current_conveyor then return end
+  current_conveyor.config.spawn_rate = rate
+  spawn_bag_part:SetAttribute("spawn_rate", rate)
+end
+
 -- setups the conveyor
 -- lpz
 function conveyor_service.setup_conveyor(conveyor_inst)
@@ -214,11 +221,14 @@ function conveyor_service.setup_conveyor(conveyor_inst)
     is_busy = false,
 
     config = {
-      spawn_rate = 0.3 -- seconds
+      spawn_rate = 1 -- seconds
     },
 
     path = path_info
   }
+
+  -- Replicate spawn_rate to clients for responsive spawn effects
+  spawn_bag_part:SetAttribute("spawn_rate", current_conveyor.config.spawn_rate)
 end
 
 -- updates the conveyor
@@ -321,6 +331,18 @@ function conveyor_service.spawn_bag(conveyor)
     spawnY = spawn_pos.Y,
     ground_y = ground_y,
   }
+
+  local MATERIALS = Enum.Material:GetEnumItems()
+  local m_idx = math.random(1, #MATERIALS)
+  local h = math.random()
+  local s = 0.8
+  local v = 1.0
+  local col = Color3.fromHSV(h, s, v)
+  local r = math.clamp(math.floor(col.R * 255 + 0.5), 0, 255)
+  local g = math.clamp(math.floor(col.G * 255 + 0.5), 0, 255)
+  local b = math.clamp(math.floor(col.B * 255 + 0.5), 0, 255)
+
+  replication_service.spawn_begin(id, m_idx, r, g, b)
 end
 
 return conveyor_service
