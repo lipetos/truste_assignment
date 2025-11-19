@@ -1,0 +1,62 @@
+{
+  "name": "assignment",
+  "tree": {
+    "$className": "DataModel",
+
+    "ReplicatedStorage": {
+      "shared": {
+        "$path": "src/shared"
+      },
+      "assets": {
+        "$path": "src/assets/storage"
+      },
+      "packages": {
+        "$path": "src/packages/"
+      }
+    },
+
+    "ServerScriptService": {
+      "server": {
+        "$path": "src/server"
+      }
+    },
+
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "client": {
+          "$path": "src/client"
+        }
+      }
+    },
+
+    "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true
+      },
+      "$path": "src/assets/workspace"
+    },
+    "Lighting": {
+      "$properties": {
+        "Ambient": [
+          0.3,0.3,0.3
+        ],
+        "Brightness": 3,
+        "GlobalShadows": true,
+        "Outlines": false,
+        "LightingStyle": "Soft",
+        "OutdoorAmbient": [
+          0.3,0.3,0.3
+        ],
+        "PrioritizeLightingQuality": true,
+        "EnvironmentDiffuseScale": 1,
+        "EnvironmentSpecularScale": 1
+      },
+      "$path": "src/assets/lighting"
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    }
+  }
+}
